@@ -24,7 +24,18 @@ impl PasswordWithPolicy {
             password: pw_with_pol_string_parts.next().unwrap().to_string(),
         }
     }
-    pub fn is_valid(self) -> bool {
+
+    pub fn is_valid_part2(&self) -> bool {
+        let chars = self.password.chars().collect::<Vec<char>>();
+        let req_char_at_min = chars[self.policy.required_min - 1] == self.policy.required_char;
+        let req_char_at_max = chars[self.policy.required_max - 1] == self.policy.required_char;
+        //println!("at chars[{}]: {:?} -> valid = {}", self.policy.required_min - 1, chars[self.policy.required_min - 1], valid);
+        //println!("at chars[{}]: {:?} -> valid = {}", self.policy.required_max - 1, chars[self.policy.required_max - 1], valid);
+
+        return (!req_char_at_max && req_char_at_min) || (req_char_at_max && !req_char_at_min)
+    }
+
+    pub fn is_valid_part1(&self) -> bool {
         let occurrence_count = self
             .password
             .split(self.policy.required_char)
@@ -52,14 +63,20 @@ fn main() {
     let file = File::open("input.txt").unwrap();
     let reader = io::BufReader::new(file);
 
-    let mut valid_count = 0;
+    let mut valid_count_part1 = 0;
+    let mut valid_count_part2 = 0;
+
     for entry in reader.lines() {
         let pw = PasswordWithPolicy::from_string(&entry.unwrap());
-        if pw.is_valid() {
-            valid_count += 1;
+        if pw.is_valid_part1() {
+            valid_count_part1 += 1;
+        }
+        if pw.is_valid_part2() {
+            valid_count_part2 += 1;
         }
     }
-    println!("Valid passwords: {}", valid_count);
+    println!("Part 1 valid passwords: {}", valid_count_part1);
+    println!("Part 2 valid passwords: {}", valid_count_part2);
 }
 
 #[test]
@@ -68,9 +85,20 @@ fn test_part1_simple_example() {
     let p0 = PasswordWithPolicy::from_string(test_strings[0]);
     let p1 = PasswordWithPolicy::from_string(test_strings[1]);
     let p2 = PasswordWithPolicy::from_string(test_strings[2]);
-    assert_eq!(p0.is_valid(), true);
-    assert_eq!(p1.is_valid(), false);
-    assert_eq!(p2.is_valid(), true);
+    assert_eq!(p0.is_valid_part1(), true);
+    assert_eq!(p1.is_valid_part1(), false);
+    assert_eq!(p2.is_valid_part1(), true);
+}
+
+#[test]
+fn test_part2_simple_example() {
+    let test_strings = ["1-3 a: abcde", "1-3 b: cdefg", "2-9 c: ccccccccc"];
+    let p0 = PasswordWithPolicy::from_string(test_strings[0]);
+    let p1 = PasswordWithPolicy::from_string(test_strings[1]);
+    let p2 = PasswordWithPolicy::from_string(test_strings[2]);
+    assert_eq!(p0.is_valid_part2(), true);
+    assert_eq!(p1.is_valid_part2(), false);
+    assert_eq!(p2.is_valid_part2(), false);
 }
 
 #[test]
