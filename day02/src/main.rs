@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::io::{self, BufRead};
+
 type Password = String;
 
 #[derive(Debug, PartialEq)]
@@ -14,7 +17,7 @@ pub struct PasswordWithPolicy {
 }
 
 impl PasswordWithPolicy {
-    pub fn from_string(password_with_policy_string: &'static str) -> PasswordWithPolicy {
+    pub fn from_string(password_with_policy_string: &str) -> PasswordWithPolicy {
         let mut pw_with_pol_string_parts = password_with_policy_string.split(": ");
         PasswordWithPolicy {
             policy: Policy::from_string(pw_with_pol_string_parts.next().unwrap()),
@@ -22,8 +25,14 @@ impl PasswordWithPolicy {
         }
     }
     pub fn is_valid(self) -> bool {
-        let occurrence_count = self.password.split(self.policy.required_char).collect::<Vec<&str>>().len() - 1; // -1, because the one element will always exist even if there's no occurrence of the required_char
-        return  self.policy.required_min <= occurrence_count && occurrence_count <= self.policy.required_max;
+        let occurrence_count = self
+            .password
+            .split(self.policy.required_char)
+            .collect::<Vec<&str>>()
+            .len()
+            - 1; // -1, because the one element will always exist even if there's no occurrence of the required_char
+        return self.policy.required_min <= occurrence_count
+            && occurrence_count <= self.policy.required_max;
     }
 }
 
@@ -40,7 +49,17 @@ impl Policy {
 }
 
 fn main() {
-    println!("Hello, world!");
+    let file = File::open("input.txt").unwrap();
+    let reader = io::BufReader::new(file);
+
+    let mut valid_count = 0;
+    for entry in reader.lines() {
+        let pw = PasswordWithPolicy::from_string(&entry.unwrap());
+        if pw.is_valid() {
+            valid_count += 1;
+        }
+    }
+    println!("Valid passwords: {}", valid_count);
 }
 
 #[test]
