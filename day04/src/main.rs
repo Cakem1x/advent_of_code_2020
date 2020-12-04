@@ -47,7 +47,7 @@ impl Passport {
         return p;
     }
 
-    pub fn is_valid(&self) -> bool {
+    pub fn is_valid_part1(&self) -> bool {
         self.birth_year.is_some()
             && self.issue_year.is_some()
             && self.expiration_year.is_some()
@@ -66,12 +66,12 @@ fn main() -> io::Result<()> {
     let mut nr_valid_passports = 0;
 
     for passport_string in input_string.split("\n\n") {
-        if Passport::from_string(passport_string).is_valid() {
+        if Passport::from_string(passport_string).is_valid_part1() {
             nr_valid_passports += 1;
         }
     }
 
-    println!("Nr valid passports: {}", nr_valid_passports);
+    println!("Part1: Nr valid passports: {}", nr_valid_passports);
 
     Ok(())
 }
@@ -96,7 +96,7 @@ fn test_example() {
     let mut nr_valid = 0;
     let input_string = "ecl:gry pid:860033327 eyr:2020 hcl:#fffffd\nbyr:1937 iyr:2017 cid:147 hgt:183cm\n\niyr:2013 ecl:amb cid:350 eyr:2023 pid:028048884\nhcl:#cfa07d byr:1929\n\nhcl:#ae17e1 iyr:2013\neyr:2024\necl:brn pid:760753108 byr:1931\nhgt:179cm\n\nhcl:#cfa07d eyr:2025 pid:166559648\niyr:2011 ecl:brn hgt:59in";
     for passport_string in input_string.split("\n\n") {
-        if Passport::from_string(passport_string).is_valid() {
+        if Passport::from_string(passport_string).is_valid_part1() {
             nr_valid += 1;
         }
     }
