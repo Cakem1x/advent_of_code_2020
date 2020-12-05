@@ -41,9 +41,10 @@ fn main() -> io::Result<()> {
     println!("Part 1 - highest seat id: {}", highest_seat_id);
 
     // part 2
-    for seat_id in 8..1016 {
-        if !seats_occupied[seat_id] && seats_occupied[seat_id - 1] && seats_occupied[seat_id + 1] {
-            println!("Part 2 - found seat: {}", seat_id);
+    for (id_first_seat_in_triplet, seat_triplets_occupied) in seats_occupied.windows(3).enumerate()
+    {
+        if seat_triplets_occupied[0] && !seat_triplets_occupied[1] && seat_triplets_occupied[2] {
+            println!("Part 2 - found seat: {}", id_first_seat_in_triplet + 1);
         }
     }
 
