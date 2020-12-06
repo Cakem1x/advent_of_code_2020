@@ -2,7 +2,7 @@
 use itertools::izip;
 use std::fs::File;
 use std::io;
-use std::io::prelude::*;
+use std::io::prelude::Read;
 
 pub fn parse_boarding_pass_str(boarding_pass_str: &str) -> usize {
     usize::from_str_radix(
