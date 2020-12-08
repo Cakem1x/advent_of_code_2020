@@ -44,26 +44,34 @@ pub fn bag_content_from_string(bag_rule_str: &str) -> (String, BagContent) {
     return (rules_bag_str.to_string(), contained_bags_strs);
 }
 
+/// Returns (nr_contained_bags, already_checked_bags) after recursion
 fn recursive_bag_expansion(
-    bag: &str,
+    current_bag: &str,
     ruleset: &Ruleset,
     mut already_checked_bags: HashSet<String>,
-) -> HashSet<String> {
-    let rule_to_check = &ruleset[bag];
+) -> (usize, HashSet<String>) {
+    let rule_to_check = &ruleset[current_bag];
 
-    for (_, bag_to_check) in rule_to_check {
-        if !already_checked_bags.contains(bag_to_check) {
-            already_checked_bags.insert(bag_to_check.to_owned());
-            already_checked_bags =
-                recursive_bag_expansion(&bag_to_check, ruleset, already_checked_bags);
-        }
+    let mut nr_other_bags_contained = 0;
+    for (next_bag_amount, next_bag_name) in rule_to_check {
+        already_checked_bags.insert(next_bag_name.to_owned());
+        let recursion_result =
+            recursive_bag_expansion(&next_bag_name, ruleset, already_checked_bags);
+        nr_other_bags_contained += next_bag_amount * recursion_result.0;
+        already_checked_bags = recursion_result.1;
     }
 
-    return already_checked_bags;
+    return (1 + nr_other_bags_contained, already_checked_bags);
 }
 
-pub fn get_bags_contained_recursively(bag: &str, ruleset: &Ruleset) -> HashSet<String> {
-    return recursive_bag_expansion(bag, ruleset, HashSet::<String>::new());
+pub fn get_bags_contained_recursively_part1(bag: &str, ruleset: &Ruleset) -> HashSet<String> {
+    return recursive_bag_expansion(bag, ruleset, HashSet::<String>::new()).1;
+    // only return set, so I don't need to fix the part1 test
+}
+
+pub fn get_bags_contained_recursively_part2(bag: &str, ruleset: &Ruleset) -> usize {
+    return recursive_bag_expansion(bag, ruleset, HashSet::<String>::new()).0 - 1;
+    // subtract itself
 }
 
 fn main() {
@@ -75,7 +83,7 @@ fn main() {
     let mut shiny_gold_counter = 0;
 
     for bag in ruleset.keys() {
-        let contained_bags = get_bags_contained_recursively(bag, &ruleset);
+        let contained_bags = get_bags_contained_recursively_part1(bag, &ruleset);
         if contained_bags.contains("shiny gold") {
             shiny_gold_counter += 1;
             println!("Bag {} can contain a shiny gold bag", bag);
@@ -87,6 +95,20 @@ fn main() {
         "Part 1 - {} bags can contain a shiny gold bag",
         shiny_gold_counter
     );
+    println!("Part 2 - A gold bag needs to contain {} other bags.",
+        get_bags_contained_recursively_part2("shiny gold", &ruleset),
+    );
+}
+
+#[test]
+fn test_example_part2() {
+    let example_str = "light red bags contain 1 bright white bag, 2 muted yellow bags.\ndark orange bags contain 3 bright white bags, 4 muted yellow bags.\nbright white bags contain 1 shiny gold bag.\nmuted yellow bags contain 2 shiny gold bags, 9 faded blue bags.\nshiny gold bags contain 1 dark olive bag, 2 vibrant plum bags.\ndark olive bags contain 3 faded blue bags, 4 dotted black bags.\nvibrant plum bags contain 5 faded blue bags, 6 dotted black bags.\nfaded blue bags contain no other bags.\ndotted black bags contain no other bags.";
+    let ruleset = ruleset_from_string(example_str);
+
+    assert_eq!(
+        get_bags_contained_recursively_part2("shiny gold", &ruleset),
+        32
+    );
 }
 
 #[test]
@@ -97,7 +119,7 @@ fn test_example_part1() {
 
     for bag_name in ruleset.keys() {
         assert_eq!(
-            get_bags_contained_recursively(bag_name, &ruleset).contains("shiny gold"),
+            get_bags_contained_recursively_part1(bag_name, &ruleset).contains("shiny gold"),
             bags_that_contain_shiny_gold
                 .iter()
                 .any(|&bag_cotaining_shiny_gold| bag_cotaining_shiny_gold == bag_name)
