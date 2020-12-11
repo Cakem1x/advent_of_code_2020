@@ -82,12 +82,53 @@ impl Grid {
             height += 1;
         }
 
-        Grid {
+        let mut grid = Grid {
             cells,
             width,
             height,
             visibility: HashMap::new(),
+        };
+        grid.finalize_visibility();
+
+        return grid;
+    }
+
+    pub fn finalize_visibility(&mut self) {
+        println!("{}", self);
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if self[&(x,y)] == State::Empty {
+                    continue;
+                }
+
+                println!("building visibility for ({}, {})", x, y);
+                self.visibility.insert((x, y), HashSet::new());
+
+                for ray_dir_y in [-1, 0, 1].iter() {
+                    for ray_dir_x in [-1, 0, 1].iter() {
+                        if *ray_dir_x == 0 && *ray_dir_y == 0 {
+                            continue; // discard invalid direction
+                        }
+
+                        let next_cell_on_ray_i32 = (x as i32 + ray_dir_x, y as i32 + ray_dir_y); // find potential next pt on ray
+                        if self.is_valid_point(next_cell_on_ray_i32.0, next_cell_on_ray_i32.1) {
+                            let next_cell_on_ray =
+                                (next_cell_on_ray_i32.0 as usize, next_cell_on_ray_i32.1 as usize);
+                            if self[&next_cell_on_ray] != State::Empty {
+                                // hit obstacle: add to visibility set and break this ray's loop
+                                self.visibility.entry((x,y)).or_insert_with(HashSet::new).insert(next_cell_on_ray);
+                                println!("Inserted visible cell at ({}, {}) with state {:?}", next_cell_on_ray.0, next_cell_on_ray.1, self[&next_cell_on_ray]);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    fn is_valid_point(&self, x: i32, y: i32) -> bool {
+        x < self.width as i32 && x >= 0 && y < self.height as i32 && y >= 0
     }
 
     fn get_adjacent_positions(&self, position: &Point2D) -> HashSet<Point2D> {
@@ -97,15 +138,11 @@ impl Grid {
                 if *x_offset == 0 && *y_offset == 0 {
                     continue;
                 }
-                let neighbor_x = position.0 as i64 + x_offset;
-                let neighbor_y = position.1 as i64 + y_offset;
+                let neighbor_x = position.0 as i32 + x_offset;
+                let neighbor_y = position.1 as i32 + y_offset;
 
                 // check under/overflow
-                if neighbor_x < self.width as i64
-                    && neighbor_x >= 0
-                    && neighbor_y < self.height as i64
-                    && neighbor_y >= 0
-                {
+                if self.is_valid_point(neighbor_x, neighbor_y) {
                     neighbors.insert((neighbor_x as usize, neighbor_y as usize));
                 }
             }
@@ -228,23 +265,23 @@ fn test_visibility3() {
     assert_eq!(grid.visibility[&(3, 3)], HashSet::<Point2D>::new());
 }
 
-#[test]
-fn test_part1_on_input() {
-    let mut file = File::open("input").unwrap();
-    let mut input_string = String::new();
-    file.read_to_string(&mut input_string).unwrap();
-    let mut grid = Grid::from(&input_string);
-
-    while grid.transition(true) != 0 {}
-
-    assert_eq!(
-        grid.cells
-            .iter()
-            .filter(|&state| *state == State::Occupied)
-            .count(),
-        2329
-    );
-}
+//#[test]
+//fn test_part1_on_input() {
+//    let mut file = File::open("input").unwrap();
+//    let mut input_string = String::new();
+//    file.read_to_string(&mut input_string).unwrap();
+//    let mut grid = Grid::from(&input_string);
+//
+//    while grid.transition(true) != 0 {}
+//
+//    assert_eq!(
+//        grid.cells
+//            .iter()
+//            .filter(|&state| *state == State::Occupied)
+//            .count(),
+//        2329
+//    );
+//}
 
 #[test]
 fn test_getting_neighbors_part1() {
