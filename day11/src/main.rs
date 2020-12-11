@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use std::fmt;
 use std::fs::File;
 use std::io::prelude::Read;
-use std::ops::{Index, IndexMut};
 #[cfg(test)]
 use std::iter::FromIterator;
+use std::ops::{Index, IndexMut};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum State {
@@ -86,7 +86,7 @@ impl Grid {
         }
     }
 
-    fn get_neighbors(&self, position: &(usize, usize)) -> HashSet<(usize, usize)> {
+    fn get_adjacent_positions(&self, position: &(usize, usize)) -> HashSet<(usize, usize)> {
         let mut neighbors = HashSet::new();
         for y_offset in [-1, 0, 1].iter() {
             for x_offset in [-1, 0, 1].iter() {
@@ -109,45 +109,59 @@ impl Grid {
         return neighbors;
     }
 
+    /// Returns the cell's new state or none, if its state won't change.
+    fn next_cell_state_part1(
+        &self,
+        cell_position: &(usize, usize),
+        neighbors: &HashSet<(usize, usize)>,
+    ) -> Option<State> {
+        match self[cell_position] {
+            State::Floor => None, // floor never changes!
+            State::Empty => {
+                if !neighbors
+                    .iter()
+                    .any(|neighbor| self[neighbor] == State::Occupied)
+                // If a seat is empty (L) and there are no occupied seats adjacent to it, the seat becomes occupied.
+                {
+                    Some(State::Occupied)
+                } else {
+                    None
+                }
+            }
+            State::Occupied => {
+                if neighbors
+                    .iter()
+                    .filter(|&neighbor| self[neighbor] == State::Occupied)
+                    .count()
+                    >= 4
+                // If a seat is occupied (#) and four or more seats adjacent to it are also occupied, the seat becomes empty.
+                {
+                    Some(State::Empty)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
     /// Changes all states in the grid, according to the rules.
     /// Returns the number of cells that had their states changed.
-    pub fn transition(&mut self) -> usize {
+    pub fn transition_part1(&mut self) -> usize {
         let mut new_states = HashMap::<(usize, usize), State>::new();
 
+        // Find which cells need new states
         for y in 0..self.height {
             for x in 0..self.width {
                 let current_position = (x, y);
-
-                let neighbors = self.get_neighbors(&current_position);
-
-                // Apply rules
-                match self[&current_position] {
-                    State::Floor => {} // floor never changes!
-                    State::Empty => {
-                        if !neighbors
-                            .iter()
-                            .any(|neighbor| self[neighbor] == State::Occupied)
-                        // If a seat is empty (L) and there are no occupied seats adjacent to it, the seat becomes occupied.
-                        {
-                            new_states.insert(current_position, State::Occupied);
-                        }
-                    }
-                    State::Occupied => {
-                        if neighbors
-                            .iter()
-                            .filter(|&neighbor| self[neighbor] == State::Occupied)
-                            .count()
-                            >= 4
-                        // If a seat is occupied (#) and four or more seats adjacent to it are also occupied, the seat becomes empty.
-                        {
-                            new_states.insert(current_position, State::Empty);
-                        }
-                    }
+                let neighbors = self.get_adjacent_positions(&current_position);
+                let new_state = self.next_cell_state_part1(&current_position, &neighbors);
+                if new_state.is_some() {
+                    new_states.insert(current_position, new_state.unwrap());
                 }
             }
         }
 
-        // apply new states
+        // Apply new states
         for (position, state) in new_states.iter() {
             self[position] = state.clone();
         }
@@ -161,38 +175,90 @@ fn main() {
     let mut input_string = String::new();
     file.read_to_string(&mut input_string).unwrap();
     let mut grid = Grid::from(&input_string);
-    let mut transitions_counter = 0;
+}
 
-    println!(
-        "Read grid with width {} and height {}.",
-        grid.width, grid.height
-    );
-
-    while grid.transition() != 0 {
-        transitions_counter += 1;
-    }
-
-    println!(
-        "Part 1 - {} Occupied places after {} transitions.",
-        grid.cells
+#[test]
+fn test_visibility1() {
+    let input_str = ".......#.\n...#.....\n.#.......\n.........\n..#L....#\n....#....\n.........\n#........\n...#.....";
+    let grid = Grid::from(input_str);
+    assert_eq!(
+        grid.visibility[(3, 4)],
+        HashSet::<(usize, usize)>::from_iter(
+            [
+                (7, 0),
+                (3, 1),
+                (1, 2),
+                (2, 4),
+                (8, 4),
+                (4, 5),
+                (0, 7),
+                (3, 8),
+            ]
             .iter()
-            .filter(|&state| *state == State::Occupied)
-            .count(),
-        transitions_counter
+            .cloned(),
+        ),
     );
 }
 
 #[test]
-fn test_getting_neighbors() {
+fn test_visibility2() {
+    let input_str = ".............\n.L.L.#.#.#.#.\n.............";
+    let grid = Grid::from(input_str);
+    assert_eq!(
+        grid.visibility[(1, 1)],
+        HashSet::<(usize, usize)>::from_iter([(3, 1),].iter().cloned(),),
+    );
+}
+
+#[test]
+fn test_visibility3() {
+    let input_str = ".##.##.\n#.#.#.#\n##...##\n...L...\n##...##\n#.#.#.#\n.##.##.";
+    let grid = Grid::from(input_str);
+    assert_eq!(grid.visibility[(3, 3)], HashSet::<(usize, usize)>::new());
+}
+
+#[test]
+fn test_part1_on_input() {
+    let mut file = File::open("input").unwrap();
+    let mut input_string = String::new();
+    file.read_to_string(&mut input_string).unwrap();
+    let mut grid = Grid::from(&input_string);
+
+    while grid.transition_part1() != 0 {}
+
+    assert_eq!(
+        grid.cells
+            .iter()
+            .filter(|&state| *state == State::Occupied)
+            .count(),
+        2329
+    );
+}
+
+#[test]
+fn test_getting_neighbors_part1() {
     let input_str = "L.LL.LL.LL\nLLLLLLL.LL\nL.L.L..L..\nLLLL.LL.LL\nL.LL.LL.LL\nL.LLLLL.LL\n..L.L.....\nLLLLLLLLLL\nL.LLLLLL.L\nL.LLLLL.LL\n";
     let grid = Grid::from(input_str);
     assert_eq!(
-        grid.get_neighbors(&(0, 0)),
+        grid.get_adjacent_positions(&(0, 0)),
         HashSet::<(usize, usize)>::from_iter([(0, 1), (1, 0), (1, 1)].iter().cloned())
     );
     assert_eq!(
-        grid.get_neighbors(&(3, 1)),
-        HashSet::<(usize, usize)>::from_iter([(2, 0), (2, 1),(2, 2),(3, 0),(3, 2),(4, 0),(4, 1),(4, 2)].iter().cloned())
+        grid.get_adjacent_positions(&(3, 1)),
+        HashSet::<(usize, usize)>::from_iter(
+            [
+                (2, 0),
+                (2, 1),
+                (2, 2),
+                (3, 0),
+                (3, 2),
+                (4, 0),
+                (4, 1),
+                (4, 2)
+            ]
+            .iter()
+            .cloned()
+        )
     );
 }
 
@@ -203,7 +269,7 @@ fn test_part1_example() {
     let mut transitions_counter = 0;
     println!("State after {} transitions:\n{}", transitions_counter, grid);
 
-    while grid.transition() != 0 {
+    while grid.transition_part1() != 0 {
         transitions_counter += 1;
         println!("State after {} transitions:\n{}", transitions_counter, grid);
     }
