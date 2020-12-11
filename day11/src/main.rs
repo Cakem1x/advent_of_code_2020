@@ -29,6 +29,7 @@ pub struct Grid {
     cells: Vec<State>,
     width: usize,
     height: usize,
+    visibility: HashMap<(usize, usize), HashSet<(usize, usize)>>,
 }
 
 impl Index<&(usize, usize)> for Grid {
@@ -83,6 +84,7 @@ impl Grid {
             cells,
             width,
             height,
+            visibility: HashMap::new(),
         }
     }
 
@@ -146,15 +148,22 @@ impl Grid {
 
     /// Changes all states in the grid, according to the rules.
     /// Returns the number of cells that had their states changed.
-    pub fn transition_part1(&mut self) -> usize {
+    pub fn transition(&mut self, part1: bool) -> usize {
         let mut new_states = HashMap::<(usize, usize), State>::new();
 
         // Find which cells need new states
         for y in 0..self.height {
             for x in 0..self.width {
                 let current_position = (x, y);
-                let neighbors = self.get_adjacent_positions(&current_position);
-                let new_state = self.next_cell_state_part1(&current_position, &neighbors);
+                let new_state;
+                if part1 {
+                    let direct_neighbors = self.get_adjacent_positions(&current_position);
+                    new_state = self.next_cell_state_part1(&current_position, &direct_neighbors);
+                } else {
+                    let visibility_neighbors = &self.visibility[&current_position];
+                    new_state = self.next_cell_state_part1(&current_position, visibility_neighbors);
+                    // TODO part2 rules
+                }
                 if new_state.is_some() {
                     new_states.insert(current_position, new_state.unwrap());
                 }
@@ -174,7 +183,7 @@ fn main() {
     let mut file = File::open("input").unwrap();
     let mut input_string = String::new();
     file.read_to_string(&mut input_string).unwrap();
-    let mut grid = Grid::from(&input_string);
+    let mut _grid = Grid::from(&input_string);
 }
 
 #[test]
@@ -182,7 +191,7 @@ fn test_visibility1() {
     let input_str = ".......#.\n...#.....\n.#.......\n.........\n..#L....#\n....#....\n.........\n#........\n...#.....";
     let grid = Grid::from(input_str);
     assert_eq!(
-        grid.visibility[(3, 4)],
+        grid.visibility[&(3, 4)],
         HashSet::<(usize, usize)>::from_iter(
             [
                 (7, 0),
@@ -205,7 +214,7 @@ fn test_visibility2() {
     let input_str = ".............\n.L.L.#.#.#.#.\n.............";
     let grid = Grid::from(input_str);
     assert_eq!(
-        grid.visibility[(1, 1)],
+        grid.visibility[&(1, 1)],
         HashSet::<(usize, usize)>::from_iter([(3, 1),].iter().cloned(),),
     );
 }
@@ -214,7 +223,7 @@ fn test_visibility2() {
 fn test_visibility3() {
     let input_str = ".##.##.\n#.#.#.#\n##...##\n...L...\n##...##\n#.#.#.#\n.##.##.";
     let grid = Grid::from(input_str);
-    assert_eq!(grid.visibility[(3, 3)], HashSet::<(usize, usize)>::new());
+    assert_eq!(grid.visibility[&(3, 3)], HashSet::<(usize, usize)>::new());
 }
 
 #[test]
@@ -224,7 +233,7 @@ fn test_part1_on_input() {
     file.read_to_string(&mut input_string).unwrap();
     let mut grid = Grid::from(&input_string);
 
-    while grid.transition_part1() != 0 {}
+    while grid.transition(true) != 0 {}
 
     assert_eq!(
         grid.cells
@@ -269,7 +278,7 @@ fn test_part1_example() {
     let mut transitions_counter = 0;
     println!("State after {} transitions:\n{}", transitions_counter, grid);
 
-    while grid.transition_part1() != 0 {
+    while grid.transition(true) != 0 {
         transitions_counter += 1;
         println!("State after {} transitions:\n{}", transitions_counter, grid);
     }
