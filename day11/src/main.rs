@@ -7,6 +7,8 @@ use std::io::prelude::Read;
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
+pub type Point2D = (usize, usize);
+
 #[derive(PartialEq, Clone, Debug)]
 pub enum State {
     Empty,
@@ -29,19 +31,19 @@ pub struct Grid {
     cells: Vec<State>,
     width: usize,
     height: usize,
-    visibility: HashMap<(usize, usize), HashSet<(usize, usize)>>,
+    visibility: HashMap<Point2D, HashSet<Point2D>>,
 }
 
-impl Index<&(usize, usize)> for Grid {
+impl Index<&Point2D> for Grid {
     type Output = State;
 
-    fn index(&self, point: &(usize, usize)) -> &Self::Output {
+    fn index(&self, point: &Point2D) -> &Self::Output {
         &self.cells[point.0 + self.width * point.1]
     }
 }
 
-impl IndexMut<&(usize, usize)> for Grid {
-    fn index_mut(&mut self, point: &(usize, usize)) -> &mut Self::Output {
+impl IndexMut<&Point2D> for Grid {
+    fn index_mut(&mut self, point: &Point2D) -> &mut Self::Output {
         &mut self.cells[point.0 + self.width * point.1]
     }
 }
@@ -88,7 +90,7 @@ impl Grid {
         }
     }
 
-    fn get_adjacent_positions(&self, position: &(usize, usize)) -> HashSet<(usize, usize)> {
+    fn get_adjacent_positions(&self, position: &Point2D) -> HashSet<Point2D> {
         let mut neighbors = HashSet::new();
         for y_offset in [-1, 0, 1].iter() {
             for x_offset in [-1, 0, 1].iter() {
@@ -114,8 +116,8 @@ impl Grid {
     /// Returns the cell's new state or none, if its state won't change.
     fn next_cell_state_part1(
         &self,
-        cell_position: &(usize, usize),
-        neighbors: &HashSet<(usize, usize)>,
+        cell_position: &Point2D,
+        neighbors: &HashSet<Point2D>,
     ) -> Option<State> {
         match self[cell_position] {
             State::Floor => None, // floor never changes!
@@ -149,7 +151,7 @@ impl Grid {
     /// Changes all states in the grid, according to the rules.
     /// Returns the number of cells that had their states changed.
     pub fn transition(&mut self, part1: bool) -> usize {
-        let mut new_states = HashMap::<(usize, usize), State>::new();
+        let mut new_states = HashMap::<Point2D, State>::new();
 
         // Find which cells need new states
         for y in 0..self.height {
@@ -192,7 +194,7 @@ fn test_visibility1() {
     let grid = Grid::from(input_str);
     assert_eq!(
         grid.visibility[&(3, 4)],
-        HashSet::<(usize, usize)>::from_iter(
+        HashSet::<Point2D>::from_iter(
             [
                 (7, 0),
                 (3, 1),
@@ -215,7 +217,7 @@ fn test_visibility2() {
     let grid = Grid::from(input_str);
     assert_eq!(
         grid.visibility[&(1, 1)],
-        HashSet::<(usize, usize)>::from_iter([(3, 1),].iter().cloned(),),
+        HashSet::<Point2D>::from_iter([(3, 1),].iter().cloned(),),
     );
 }
 
@@ -223,7 +225,7 @@ fn test_visibility2() {
 fn test_visibility3() {
     let input_str = ".##.##.\n#.#.#.#\n##...##\n...L...\n##...##\n#.#.#.#\n.##.##.";
     let grid = Grid::from(input_str);
-    assert_eq!(grid.visibility[&(3, 3)], HashSet::<(usize, usize)>::new());
+    assert_eq!(grid.visibility[&(3, 3)], HashSet::<Point2D>::new());
 }
 
 #[test]
@@ -250,11 +252,11 @@ fn test_getting_neighbors_part1() {
     let grid = Grid::from(input_str);
     assert_eq!(
         grid.get_adjacent_positions(&(0, 0)),
-        HashSet::<(usize, usize)>::from_iter([(0, 1), (1, 0), (1, 1)].iter().cloned())
+        HashSet::<Point2D>::from_iter([(0, 1), (1, 0), (1, 1)].iter().cloned())
     );
     assert_eq!(
         grid.get_adjacent_positions(&(3, 1)),
-        HashSet::<(usize, usize)>::from_iter(
+        HashSet::<Point2D>::from_iter(
             [
                 (2, 0),
                 (2, 1),
