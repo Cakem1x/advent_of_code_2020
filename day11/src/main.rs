@@ -214,7 +214,6 @@ impl Grid {
                     }
                     let visibility_neighbors = &self.visibility[&current_position];
                     new_state = self.next_cell_state(&current_position, visibility_neighbors, 5);
-                    // TODO part2 rules
                 }
                 if new_state.is_some() {
                     new_states.insert(current_position, new_state.unwrap());
