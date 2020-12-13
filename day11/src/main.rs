@@ -94,14 +94,12 @@ impl Grid {
     }
 
     pub fn finalize_visibility(&mut self) {
-        println!("{}", self);
         for y in 0..self.height {
             'cells: for x in 0..self.width {
                 if self[&(x, y)] == State::Floor {
                     continue 'cells;
                 }
 
-                println!("building visibility for ({}, {})", x, y);
                 self.visibility.insert((x, y), HashSet::new());
 
                 for ray_dir_y in [-1, 0, 1].iter() {
@@ -128,10 +126,6 @@ impl Grid {
                                     .entry((x, y))
                                     .or_insert_with(HashSet::new)
                                     .insert(next_cell_on_ray);
-                                println!(
-                                    "Inserted visible cell at ({}, {}) with state {:?}",
-                                    next_cell_on_ray.0, next_cell_on_ray.1, self[&next_cell_on_ray]
-                                );
                                 break 'go_along_ray;
                             }
                         }
@@ -165,10 +159,11 @@ impl Grid {
     }
 
     /// Returns the cell's new state or none, if its state won't change.
-    fn next_cell_state_part1(
+    fn next_cell_state(
         &self,
         cell_position: &Point2D,
         neighbors: &HashSet<Point2D>,
+        occupied_to_empty_threshold: usize,
     ) -> Option<State> {
         match self[cell_position] {
             State::Floor => None, // floor never changes!
@@ -188,8 +183,9 @@ impl Grid {
                     .iter()
                     .filter(|&neighbor| self[neighbor] == State::Occupied)
                     .count()
-                    >= 4
-                // If a seat is occupied (#) and four or more seats adjacent to it are also occupied, the seat becomes empty.
+                    >= occupied_to_empty_threshold
+                // part1: If a seat is occupied (#) and four or more seats adjacent to it are also occupied, the seat becomes empty.
+                // part2: It now takes five or more visible occupied seats for an occupied seat to become empty
                 {
                     Some(State::Empty)
                 } else {
@@ -211,10 +207,13 @@ impl Grid {
                 let new_state;
                 if part1 {
                     let direct_neighbors = self.get_adjacent_positions(&current_position);
-                    new_state = self.next_cell_state_part1(&current_position, &direct_neighbors);
+                    new_state = self.next_cell_state(&current_position, &direct_neighbors, 4);
                 } else {
+                    if self[&current_position] == State::Floor {
+                        continue; // floor never changes
+                    }
                     let visibility_neighbors = &self.visibility[&current_position];
-                    new_state = self.next_cell_state_part1(&current_position, visibility_neighbors);
+                    new_state = self.next_cell_state(&current_position, visibility_neighbors, 5);
                     // TODO part2 rules
                 }
                 if new_state.is_some() {
@@ -236,7 +235,38 @@ fn main() {
     let mut file = File::open("input").unwrap();
     let mut input_string = String::new();
     file.read_to_string(&mut input_string).unwrap();
-    let mut _grid = Grid::from(&input_string);
+    let mut grid = Grid::from(&input_string);
+
+    while grid.transition(false) != 0 {}
+
+    println!(
+        "{} occupied seats.",
+        grid.cells
+            .iter()
+            .filter(|&state| *state == State::Occupied)
+            .count()
+    );
+}
+
+#[test]
+fn test_part2_example() {
+    let input_str = "L.LL.LL.LL\nLLLLLLL.LL\nL.L.L..L..\nLLLL.LL.LL\nL.LL.LL.LL\nL.LLLLL.LL\n..L.L.....\nLLLLLLLLLL\nL.LLLLLL.L\nL.LLLLL.LL\n";
+    let mut grid = Grid::from(input_str);
+    let mut transitions_counter = 0;
+    println!("State after {} transitions:\n{}", transitions_counter, grid);
+
+    while grid.transition(false) != 0 {
+        transitions_counter += 1;
+        println!("State after {} transitions:\n{}", transitions_counter, grid);
+    }
+
+    assert_eq!(
+        grid.cells
+            .iter()
+            .filter(|&state| *state == State::Occupied)
+            .count(),
+        26
+    );
 }
 
 #[test]
@@ -279,23 +309,23 @@ fn test_visibility3() {
     assert_eq!(grid.visibility[&(3, 3)], HashSet::<Point2D>::new());
 }
 
-//#[test]
-//fn test_part1_on_input() {
-//    let mut file = File::open("input").unwrap();
-//    let mut input_string = String::new();
-//    file.read_to_string(&mut input_string).unwrap();
-//    let mut grid = Grid::from(&input_string);
-//
-//    while grid.transition(true) != 0 {}
-//
-//    assert_eq!(
-//        grid.cells
-//            .iter()
-//            .filter(|&state| *state == State::Occupied)
-//            .count(),
-//        2329
-//    );
-//}
+#[test]
+fn test_part1_on_input() {
+    let mut file = File::open("input").unwrap();
+    let mut input_string = String::new();
+    file.read_to_string(&mut input_string).unwrap();
+    let mut grid = Grid::from(&input_string);
+
+    while grid.transition(true) != 0 {}
+
+    assert_eq!(
+        grid.cells
+            .iter()
+            .filter(|&state| *state == State::Occupied)
+            .count(),
+        2329
+    );
+}
 
 #[test]
 fn test_getting_neighbors_part1() {
