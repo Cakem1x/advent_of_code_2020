@@ -96,29 +96,43 @@ impl Grid {
     pub fn finalize_visibility(&mut self) {
         println!("{}", self);
         for y in 0..self.height {
-            for x in 0..self.width {
-                if self[&(x,y)] == State::Empty {
-                    continue;
+            'cells: for x in 0..self.width {
+                if self[&(x, y)] == State::Floor {
+                    continue 'cells;
                 }
 
                 println!("building visibility for ({}, {})", x, y);
                 self.visibility.insert((x, y), HashSet::new());
 
                 for ray_dir_y in [-1, 0, 1].iter() {
-                    for ray_dir_x in [-1, 0, 1].iter() {
+                    'rays: for ray_dir_x in [-1, 0, 1].iter() {
                         if *ray_dir_x == 0 && *ray_dir_y == 0 {
-                            continue; // discard invalid direction
+                            continue 'rays; // discard invalid direction
                         }
 
-                        let next_cell_on_ray_i32 = (x as i32 + ray_dir_x, y as i32 + ray_dir_y); // find potential next pt on ray
-                        if self.is_valid_point(next_cell_on_ray_i32.0, next_cell_on_ray_i32.1) {
-                            let next_cell_on_ray =
-                                (next_cell_on_ray_i32.0 as usize, next_cell_on_ray_i32.1 as usize);
-                            if self[&next_cell_on_ray] != State::Empty {
+                        'go_along_ray: for range in 1.. {
+                            let next_cell_on_ray_i32 =
+                                (x as i32 + range * ray_dir_x, y as i32 + range * ray_dir_y); // find potential next pt on ray
+                            if !self.is_valid_point(next_cell_on_ray_i32.0, next_cell_on_ray_i32.1)
+                            {
+                                break 'go_along_ray;
+                            }
+
+                            let next_cell_on_ray = (
+                                next_cell_on_ray_i32.0 as usize,
+                                next_cell_on_ray_i32.1 as usize,
+                            );
+                            if self[&next_cell_on_ray] != State::Floor {
                                 // hit obstacle: add to visibility set and break this ray's loop
-                                self.visibility.entry((x,y)).or_insert_with(HashSet::new).insert(next_cell_on_ray);
-                                println!("Inserted visible cell at ({}, {}) with state {:?}", next_cell_on_ray.0, next_cell_on_ray.1, self[&next_cell_on_ray]);
-                                break;
+                                self.visibility
+                                    .entry((x, y))
+                                    .or_insert_with(HashSet::new)
+                                    .insert(next_cell_on_ray);
+                                println!(
+                                    "Inserted visible cell at ({}, {}) with state {:?}",
+                                    next_cell_on_ray.0, next_cell_on_ray.1, self[&next_cell_on_ray]
+                                );
+                                break 'go_along_ray;
                             }
                         }
                     }
